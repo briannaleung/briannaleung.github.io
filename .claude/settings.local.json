@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/bri/Desktop/projects/personal-website -name *.tsx -o -name *.ts -o -name *.css)"
+    ]
+  }
+}
