@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find /c/Users/bri/Desktop/projects/personal-website -name *.tsx -o -name *.ts -o -name *.css)"
+      "Bash(find /c/Users/bri/Desktop/projects/personal-website -name *.tsx -o -name *.ts -o -name *.css)",
+      "WebSearch",
+      "Bash(New-Item -ItemType File -Path \"C:\\\\Users\\\\bri\\\\Desktop\\\\projects\\\\personal-website\\\\public\\\\.nojekyll\" -Force)"
     ]
   }
 }
