@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useLayoutEffect, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
 import ProjectCard, { ProjectCardProps } from "./ProjectCard";
 
 const DURATION = 300;
@@ -32,10 +31,6 @@ export default function VerticalCarousel({
   const lastDx     = useRef<number>(0);
   const isDragging = useRef(false);
 
-  // Vertical touch (mobile)
-  const touchStartY    = useRef<number | null>(null);
-  const touchStartTime = useRef<number>(0);
-
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 860px)");
     const update = () => setIsMobile(mq.matches);
@@ -43,31 +38,6 @@ export default function VerticalCarousel({
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
   }, []);
-
-  // Reset to first card when the hero becomes visible again
-  useEffect(() => {
-    if (!isMobile) return;
-    let wasHeroActive = document.body.style.overflow === "hidden";
-    const observer = new MutationObserver(() => {
-      const isHeroActive = document.body.style.overflow === "hidden";
-      if (isHeroActive && !wasHeroActive) {
-        // Hero just became visible — reset carousel
-        slideRefs.current.forEach(el => {
-          if (!el) return;
-          el.style.transform  = "";
-          el.style.transition = "";
-          el.style.opacity    = "";
-          el.style.visibility = "";
-        });
-        setActive(0);
-        setBusy(false);
-        slideRefs.current[0]?.scrollTo({ top: 0 });
-      }
-      wasHeroActive = isHeroActive;
-    });
-    observer.observe(document.body, { attributes: true, attributeFilter: ["style"] });
-    return () => observer.disconnect();
-  }, [isMobile]);
 
   // Desktop: set viewport height to tallest card
   useLayoutEffect(() => {
@@ -78,47 +48,34 @@ export default function VerticalCarousel({
   }, [isMobile]);
 
   // ── Core navigate (unified JS animation) ─────────────────────────────────
-  // delta: negative = forward (next), positive = backward (prev)
-  // startOffset: how far the incoming card is already displaced (from gesture drag)
 
   const animateNavigate = useCallback(
     (to: number, delta: number, startOffset?: number) => {
       const cur = activeRef.current;
       const activeEl = slideRefs.current[cur];
       const adjEl    = slideRefs.current[to];
-      const size = isMobile
-        ? (viewportRef.current?.offsetHeight ?? 600)
-        : (viewportRef.current?.offsetWidth ?? 400);
+      const w = viewportRef.current?.offsetWidth ?? 400;
 
       setBusy(true);
 
-      // Active exits
       if (activeEl) {
         activeEl.style.transition = `transform ${DURATION}ms ${EASING}, opacity ${DURATION}ms ${EASING}`;
-        activeEl.style.transform  = isMobile
-          ? `translateY(${delta < 0 ? -size : size}px)`
-          : `translateX(${delta < 0 ? -size : size}px)`;
+        activeEl.style.transform  = `translateX(${delta < 0 ? -w : w}px)`;
         activeEl.style.opacity = "0";
       }
 
-      // Incoming arrives
       if (adjEl) {
-        const initialOffset = startOffset ?? (delta < 0 ? size : -size);
-        // If no startOffset (button press), position card off-screen first
+        const initialOffset = startOffset ?? (delta < 0 ? w : -w);
         if (startOffset === undefined) {
           adjEl.style.transition = "none";
-          adjEl.style.transform  = isMobile
-            ? `translateY(${initialOffset}px)`
-            : `translateX(${initialOffset}px)`;
+          adjEl.style.transform  = `translateX(${initialOffset}px)`;
           adjEl.style.opacity    = "0";
           adjEl.style.visibility = "visible";
         }
-
-        // Force layout flush before animating in
         requestAnimationFrame(() => requestAnimationFrame(() => {
           if (!adjEl) return;
           adjEl.style.transition = `transform ${DURATION}ms ${EASING}, opacity ${DURATION}ms ${EASING}`;
-          adjEl.style.transform  = isMobile ? "translateY(0)" : "translateX(0)";
+          adjEl.style.transform  = "translateX(0)";
           adjEl.style.opacity    = "1";
         }));
       }
@@ -128,25 +85,18 @@ export default function VerticalCarousel({
         if (adjEl)    { adjEl.style.transform = ""; adjEl.style.transition = ""; adjEl.style.visibility = ""; adjEl.style.opacity = ""; }
         setActive(to);
         setBusy(false);
-        // Scroll new card to top on mobile
-        if (isMobile) setTimeout(() => slideRefs.current[to]?.scrollTo({ top: 0 }), 0);
       }, DURATION + 20);
     },
-    [isMobile]
+    []
   );
 
   const navigate = useCallback(
     (to: number, delta: number) => {
       if (busy) return;
-      if (isMobile) {
-        // No wrapping on mobile
-        if (to < 0 || to >= projects.length) return;
-      } else {
-        to = ((to % projects.length) + projects.length) % projects.length;
-      }
+      to = ((to % projects.length) + projects.length) % projects.length;
       animateNavigate(to, delta);
     },
-    [active, busy, isMobile, projects.length, animateNavigate]
+    [busy, projects.length, animateNavigate]
   );
 
   // Keyboard
@@ -225,7 +175,6 @@ export default function VerticalCarousel({
       const velocity = Math.abs(dx) / dt;
       const to = adjIdx(dx);
       if (Math.abs(dx) > 50 || velocity > 0.4) {
-        // Continue from drag position
         const w = viewportRef.current?.offsetWidth ?? 400;
         animateNavigate(to, dx, dx < 0 ? w + dx : -w + dx);
       } else {
@@ -236,40 +185,12 @@ export default function VerticalCarousel({
     isDragging.current = false;
   };
 
-  // ── Vertical touch events (mobile) ───────────────────────────────────────
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    e.nativeEvent.stopPropagation();
-    touchStartY.current    = e.touches[0].clientY;
-    touchStartTime.current = Date.now();
-  };
-
-  const onTouchEnd = (e: React.TouchEvent) => {
-    e.nativeEvent.stopPropagation();
-    if (touchStartY.current === null || busy) return;
-    const dy = e.changedTouches[0].clientY - touchStartY.current;
-    const dt = Math.max(1, Date.now() - touchStartTime.current);
-    const velocity = Math.abs(dy) / dt;
-    const slideEl  = slideRefs.current[active];
-
-    if (slideEl && (Math.abs(dy) > 60 || velocity > 0.5)) {
-      const atTop    = slideEl.scrollTop <= 4;
-      const atBottom = slideEl.scrollTop + slideEl.clientHeight >= slideEl.scrollHeight - 4;
-      if (dy < 0 && atBottom) navigate(active + 1, -1);
-      else if (dy > 0 && atTop) navigate(active - 1, 1);
-    }
-    touchStartY.current = null;
-  };
-
   // ── Slide class ───────────────────────────────────────────────────────────
 
   const slideClass = (i: number) =>
     i === active ? "carousel-slide slide-active" : "carousel-slide slide-hidden";
 
   // ── Render ────────────────────────────────────────────────────────────────
-
-  const prevDisabled = busy || (isMobile && active === 0);
-  const nextDisabled = busy || (isMobile && active === projects.length - 1);
 
   if (isMobile) {
     return (
