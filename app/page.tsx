@@ -83,8 +83,6 @@ const projects: ProjectCardProps[] = [
       "TypeScript",
       "Checkout UI Extensions",
       "Accessibility",
-      "Legal compliance",
-      "Bundle optimisation",
     ],
   },
   {
