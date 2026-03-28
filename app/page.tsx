@@ -82,7 +82,6 @@ const projects: ProjectCardProps[] = [
       "Polaris web components",
       "TypeScript",
       "Checkout UI Extensions",
-      "Accessibility",
     ],
   },
   {

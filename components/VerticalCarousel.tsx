@@ -272,50 +272,17 @@ export default function VerticalCarousel({
   const nextDisabled = busy || (isMobile && active === projects.length - 1);
 
   if (isMobile) {
-    const dots = (
-      <div className="carousel-nav-vertical">
-        <div className="carousel-dots carousel-dots-vertical">
-          {projects.map((_, i) => (
-            <button
-              key={i}
-              className={`carousel-dot${i === active ? " active" : ""}`}
-              onClick={() => navigate(i, i > active ? -1 : 1)}
-              aria-label={`Card ${i + 1}`}
-            />
+    return (
+      <div className="carousel carousel-mobile">
+        <div className="carousel-mobile-header">
+          {label && <p className="section-label" style={{ margin: 0 }}>{label}</p>}
+        </div>
+        <div className="mobile-project-list">
+          {projects.map((project, i) => (
+            <ProjectCard key={project.title} {...project} index={i} tagLinks={tagLinks} collapsible />
           ))}
         </div>
       </div>
-    );
-
-    return (
-      <>
-        <div className="carousel carousel-mobile">
-          <div className="carousel-mobile-header">
-            {label && <p className="section-label" style={{ margin: 0 }}>{label}</p>}
-          </div>
-          <div className="carousel-mobile-body">
-            <div
-              ref={viewportRef}
-              className="carousel-viewport carousel-viewport-mobile"
-              onTouchStart={onTouchStart}
-              onTouchEnd={onTouchEnd}
-            >
-              <div style={{ position: "relative", height: "100%" }}>
-                {projects.map((project, i) => (
-                  <div
-                    key={project.title}
-                    ref={(el) => { slideRefs.current[i] = el; }}
-                    className={slideClass(i)}
-                  >
-                    <ProjectCard {...project} index={i} tagLinks={tagLinks} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-        {createPortal(dots, document.body)}
-      </>
     );
   }
 
